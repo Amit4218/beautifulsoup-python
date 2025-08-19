@@ -90,7 +90,7 @@ def main():
 
     # Calling functions with the collected data
     dataToCsv(titles, images, ratings, instocks, prices)
-    database(titles, images, ratings, instocks, prices)
+    # database(titles, images, ratings, instocks, prices)
 
 
 # Run the main function to start scraping and storing data
