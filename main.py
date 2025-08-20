@@ -95,3 +95,6 @@ def main():
 
 # Run the main function to start scraping and storing data
 main()
+
+def test():
+    pass
