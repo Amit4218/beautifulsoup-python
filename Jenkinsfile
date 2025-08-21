@@ -52,7 +52,7 @@ pipeline {
                         #!/bin/bash
                         set -e
                         . .venv/bin/activate
-                        pytest test_scraper.py   # <-- make sure your test file name is correct
+                        pytest main.test.py   
                     '''
                 }
             }
