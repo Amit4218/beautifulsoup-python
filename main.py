@@ -5,7 +5,9 @@ import requests  # to get requests permission from the page
 import datetime  # to keep track of when the data was created
 
 
-link = requests.get("https://books.toscrape.com/catalogue/category/books_1/index.html")  # getting the html form the page
+link = requests.get(
+    "https://books.toscrape.com/catalogue/category/books_1/index.html"
+)  # getting the html form the page
 soup = BeautifulSoup(link.text, "html.parser")  # parsing the page
 
 
@@ -17,7 +19,7 @@ def dataToCsv(titles, images, ratings, instocks, prices):
         "Book Prices": prices,
         "Image Links": images,
         "Availability": instocks,
-        "Book Rating": ratings
+        "Book Rating": ratings,
     }
 
     data = pd.DataFrame(Title_columns)
@@ -34,7 +36,9 @@ def database(titles, images, ratings, instocks, prices):
 
     db = client.beautiful_soup_test
 
-    for title, image, rating, instock, price in zip(titles, images, ratings, instocks, prices):
+    for title, image, rating, instock, price in zip(
+        titles, images, ratings, instocks, prices
+    ):
         post = {
             "Book name": title,
             "Image link": image,
@@ -54,9 +58,9 @@ def database(titles, images, ratings, instocks, prices):
 def main():
     # Fetching elements required for scraping
     name_elements = soup.find_all("h3")
-    rating_elements = soup.find_all('article', class_="product_pod")
-    image_elements = soup.find_all('div', class_="image_container")
-    price_elements = soup.find_all('div', class_="product_price")
+    rating_elements = soup.find_all("article", class_="product_pod")
+    image_elements = soup.find_all("div", class_="image_container")
+    price_elements = soup.find_all("div", class_="product_price")
 
     # Lists to store the scraped data
     titles = []
@@ -67,24 +71,24 @@ def main():
 
     # Looping through the elements
     for book in name_elements:
-        title = book.find('a')['title']
+        title = book.find("a")["title"]
         titles.append(title)
 
     for image in image_elements:
-        img_src = image.find('img')['src']
+        img_src = image.find("img")["src"]
         full_img_url = "https://books.toscrape.com/" + img_src.replace("../../../", "")
         images.append(full_img_url)
 
     for price in price_elements:
-        price_text = price.find('p').text.strip()
+        price_text = price.find("p").text.strip()
         prices.append(price_text)
 
     for stock in rating_elements:
-        instock_text = stock.find('p', class_="instock availability").text.strip()
+        instock_text = stock.find("p", class_="instock availability").text.strip()
         instocks.append(instock_text)
 
     for rating in rating_elements:
-        rating_class = rating.find('p')['class']
+        rating_class = rating.find("p")["class"]
         # Assuming the rating class format is like 'star-rating Three'
         ratings.append(rating_class[1])
 
@@ -95,6 +99,3 @@ def main():
 
 # Run the main function to start scraping and storing data
 main()
-
-def test():
-    pass

@@ -1,56 +1,125 @@
+import os
+import pandas as pd
 import pytest
-from unittest.mock import patch, MagicMock
-from main.test import dataToCsv, database
+import mongomock
+from unittest.mock import patch
+from bs4 import BeautifulSoup
 
-def test_dataToCsv_creates_csv(monkeypatch):
-    titles = ["Book1", "Book2"]
-    images = ["img1.jpg", "img2.jpg"]
-    ratings = ["Three", "Five"]
+# Import your scraper functions
+from main import (
+    dataToCsv,
+    database,
+    main,
+)
+
+
+# --------------------------
+# Tests for dataToCsv
+# --------------------------
+def test_dataToCsv_creates_file(tmp_path):
+    titles = ["Book A", "Book B"]
+    images = ["http://img1", "http://img2"]
+    ratings = ["Five", "Three"]
     instocks = ["In stock", "Out of stock"]
-    prices = ["£10.00", "£20.00"]
+    prices = ["£10.99", "£20.50"]
 
-    mock_df = MagicMock()
-    monkeypatch.setattr("pandas.DataFrame", lambda x: mock_df)
-    mock_df.to_csv = MagicMock()
+    test_file = tmp_path / "books_data.csv"
 
-    dataToCsv(titles, images, ratings, instocks, prices)
-    mock_df.to_csv.assert_called_once_with("books_data.csv", index=False)
+    # Change cwd so file is written in tmp_path
+    old_cwd = os.getcwd()
+    os.chdir(tmp_path)
 
-def test_database_inserts_data(monkeypatch):
-    titles = ["Book1"]
-    images = ["img1.jpg"]
-    ratings = ["Three"]
+    your_module.dataToCsv(titles, images, ratings, instocks, prices)
+
+    assert os.path.exists("books_data.csv")
+
+    df = pd.read_csv("books_data.csv")
+    assert list(df.columns) == [
+        "Book Names",
+        "Book Prices",
+        "Image Links",
+        "Availability",
+        "Book Rating",
+    ]
+    assert len(df) == 2
+    assert df["Book Names"][0] == "Book A"
+
+    os.chdir(old_cwd)
+
+
+def test_dataToCsv_with_empty_lists(tmp_path):
+    old_cwd = os.getcwd()
+    os.chdir(tmp_path)
+
+    your_module.dataToCsv([], [], [], [], [])
+    df = pd.read_csv("books_data.csv")
+    assert df.empty
+
+    os.chdir(old_cwd)
+
+
+# --------------------------
+# Tests for database
+# --------------------------
+@patch("your_module.MongoClient", new=mongomock.MongoClient)
+def test_database_inserts_data():
+    titles = ["Book A"]
+    images = ["http://img1"]
+    ratings = ["Five"]
     instocks = ["In stock"]
-    prices = ["£10.00"]
+    prices = ["£10.99"]
 
-    mock_client = MagicMock()
-    mock_db = MagicMock()
-    mock_posts = MagicMock()
-    mock_insert = MagicMock(return_value=MagicMock(inserted_id="fake_id"))
+    post_id = your_module.database(titles, images, ratings, instocks, prices)
 
-    mock_client.beautiful_soup_test = mock_db
-    mock_db.posts = mock_posts
-    mock_posts.insert_one = mock_insert
+    client = mongomock.MongoClient()
+    db = client.beautiful_soup_test
+    posts = list(db.posts.find({}))
 
-    monkeypatch.setattr("main.test.MongoClient", lambda x: mock_client)
+    assert len(posts) == 1
+    assert posts[0]["Book name"] == "Book A"
+    assert "date" in posts[0]
+    assert post_id is not None
 
-    post_id = database(titles, images, ratings, instocks, prices)
-    mock_insert.assert_called_once()
-    assert post_id == "fake_id"import pytest
-from main.test import main_function
 
-def test_main_function_normal():
-    # Replace with actual input and expected output
-    input_data = "normal input"
-    expected_output = "expected result"
-    assert main_function(input_data) == expected_output
+@patch("your_module.MongoClient", new=mongomock.MongoClient)
+def test_database_with_empty_lists():
+    post_id = your_module.database([], [], [], [], [])
+    # Should not insert anything
+    assert post_id is None or isinstance(post_id, str)
 
-def test_main_function_empty_input():
-    input_data = ""
-    expected_output = "expected for empty"
-    assert main_function(input_data) == expected_output
 
-def test_main_function_invalid_input():
-    input_data = None
-    with pytest.raises(Exception):
-        main_function(input_data)
+# --------------------------
+# Tests for scraping logic
+# --------------------------
+def test_scraping_parses_sample_html(monkeypatch, tmp_path):
+    fake_html = """
+    <html>
+        <article class="product_pod">
+            <h3><a title="Fake Book"></a></h3>
+            <div class="image_container"><img src="../../../media/cache/fake.jpg"/></div>
+            <div class="product_price"><p>£15.00</p></div>
+            <p class="instock availability">In stock</p>
+            <p class="star-rating Three"></p>
+        </article>
+    </html>
+    """
+
+    def fake_requests_get(url):
+        class FakeResponse:
+            text = fake_html
+
+        return FakeResponse()
+
+    monkeypatch.setattr(your_module.requests, "get", fake_requests_get)
+
+    # Run scraper (creates books_data.csv)
+    old_cwd = os.getcwd()
+    os.chdir(tmp_path)
+    your_module.main()
+
+    df = pd.read_csv("books_data.csv")
+    assert "Fake Book" in df["Book Names"].values
+    assert "£15.00" in df["Book Prices"].values
+    assert "Three" in df["Book Rating"].values
+
+    os.chdir(old_cwd)
