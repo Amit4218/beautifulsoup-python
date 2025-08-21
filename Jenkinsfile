@@ -11,13 +11,13 @@ pipeline {
                         set -e  # stop on first error
 
                         sudo apt update -y
-                        sudo apt install python3 python3.12-venv -y
+                        sudo apt install -y python3 python3.12-venv
 
-                        # Create venv
+                        # Create virtual environment
                         python3 -m venv .venv
 
                         # Activate venv
-                        source .venv/bin/activate
+                        . .venv/bin/activate
 
                         # Upgrade pip inside venv
                         pip install --upgrade pip
@@ -36,7 +36,8 @@ pipeline {
                     echo 'Building the application...'
                     sh '''
                         #!/bin/bash
-                        source .venv/bin/activate
+                        set -e
+                        . .venv/bin/activate
                         pip install -r requirements.txt
                     '''
                 }
@@ -49,8 +50,9 @@ pipeline {
                     echo 'Running tests...'
                     sh '''
                         #!/bin/bash
-                        source .venv/bin/activate
-                        pytest main.test.py
+                        set -e
+                        . .venv/bin/activate
+                        pytest test_scraper.py   # <-- make sure your test file name is correct
                     '''
                 }
             }
@@ -62,14 +64,14 @@ pipeline {
                     echo 'Deploying the application...'
                     sh '''
                         #!/bin/bash
-                        source .venv/bin/activate
+                        set -e
+                        . .venv/bin/activate
                         python main.py
                     '''
                     // Add deployment steps (e.g., rsync, docker, kubectl, etc.)
                 }
             }
         }
-
     }
 
     post {
